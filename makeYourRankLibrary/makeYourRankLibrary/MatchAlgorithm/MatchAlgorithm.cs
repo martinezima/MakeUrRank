@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace makeYourRankLibrary.MatchAlgorithm
+namespace MakeYourRankLibrary.MatchAlgorithm
 {
     public abstract class MatchAlgorithm
     {
@@ -17,6 +17,7 @@ namespace makeYourRankLibrary.MatchAlgorithm
         private bool IsLocal { get; set; }
         private bool ThrowCoin { get; set; }
         private List<ByeWeek> byeWeekContenders;
+
         public List<ByeWeek> ByeWeekContenders 
         { 
             get
@@ -138,47 +139,108 @@ namespace makeYourRankLibrary.MatchAlgorithm
         /// </summary>
         public virtual void MakeCalendar()
         {
-            
-            var tempMatches = new List<Match>(this.Matches);
+            var tempMatches = new List<Match>(this.Matches);               
             var numberOfMatches = this.Matches.Count;
             var weeks = this.Matches.Count / this.GamesPerWeek;
-            this.Matches.Clear();
-            var playersBag = this.PlayerCalendar.Select(player => player.PlayerId).ToList();
-            var rand = new System.Random(DateTime.Now.Millisecond);
 
+            //Clear matches to put them organized
+            this.Matches.Clear();  
+            var byeWeekBag = this.PlayerCalendar.Select(player => player.PlayerId).ToList();
+            
+
+            var rand = new System.Random(DateTime.Now.Millisecond);
+            var choice = 0;
             var byeContender = string.Empty;
             for (int week = 1; week <= weeks; week++)
             {
-                if (false/*this.DoesNeedByeWeek*/)
+                var remainingBag = this.PlayerCalendar.Select(player => player.PlayerId).ToList();
+                if (this.DoesNeedByeWeek)
                 {
                     //Set bye week
-                    var choice = rand.Next(playersBag.Count - 1);
-                    byeContender = playersBag[choice];
+                    choice = rand.Next(byeWeekBag.Count - 1);
+                    byeContender = byeWeekBag[choice];
                     this.ByeWeekContenders.Add(new ByeWeek() { Contender = byeContender, Week = week });
-                    playersBag.RemoveAt(choice);
+                    byeWeekBag.RemoveAt(choice);
+                    remainingBag.RemoveAt(choice);
                 }
 
-                do
+
+                var matchesToEvaluate = new List<Match>(tempMatches);
+
+                matchesToEvaluate.RemoveAll(m => m.Contender1 == byeContender);
+                matchesToEvaluate.RemoveAll(m => m.Contender2 == byeContender);
+
+                while (!(this.Matches.Count == (this.GamesPerWeek * week)))
                 {
-                    var choice = rand.Next(numberOfMatches - 1);
-                    var match = tempMatches[choice];
-                    tempMatches.Remove(match);
+                    if (matchesToEvaluate.Count == 0)
+                    {
+                        matchesToEvaluate = new List<Match>(tempMatches);
+                        matchesToEvaluate.RemoveAll(m => m.Contender1 == byeContender);
+                        matchesToEvaluate.RemoveAll(m => m.Contender2 == byeContender);
+
+                        matchesToEvaluate.RemoveAll(m => !remainingBag.Contains(m.Contender1));
+                        matchesToEvaluate.RemoveAll(m => !remainingBag.Contains(m.Contender2));
+
+                        if (matchesToEvaluate.Count == 0)
+                        {
+                            if (this.DoesNeedByeWeek) 
+                            { 
+                                //update bye contenders
+                                this.ByeWeekContenders.RemoveAt(this.ByeWeekContenders.Count - 1);
+                                byeWeekBag.Remove(byeContender);
+                                choice = rand.Next(byeWeekBag.Count - 1);
+                                var tempByContender = byeWeekBag[choice];
+                                this.ByeWeekContenders.Add(new ByeWeek() { Contender = tempByContender, Week = week });
+                                byeWeekBag.Add(byeContender);
+                                byeWeekBag.Remove(tempByContender);
+                                byeContender = tempByContender;
+                                tempMatches.AddRange(this.Matches.Where(m => m.Week == week));
+                                this.Matches.RemoveAll(m => m.Week == week);
+                            
+                                remainingBag = this.PlayerCalendar.Select(player => player.PlayerId).ToList();
+                                remainingBag.Remove(byeContender);
+                                //start again
+                                matchesToEvaluate = new List<Match>(tempMatches);
+
+                                matchesToEvaluate.RemoveAll(m => m.Contender1 == byeContender);
+                                matchesToEvaluate.RemoveAll(m => m.Contender2 == byeContender);
+                            }
+                            else
+                            {                                
+                                matchesToEvaluate = new List<Match>(tempMatches);
+                            }
+                        }
+                    }
+
+
+                    var choiceMatch = rand.Next(matchesToEvaluate.Count - 1);
+                    var match = matchesToEvaluate[choiceMatch];
+                    matchesToEvaluate.Remove(match);
                     this.MatchCounter++;
 
-                    if (this.CheckMatch(match, tempMatches, week, byeContender))
-                    {
-                        this.MatchCounter = 0;
-                        match.Week = week;
-                        this.SetLocalOrVisitor(match, week);
+                    match.Week = week;
+                    this.SetLocalOrVisitor(match, week);
+                    this.Matches.Add(match);
+                    tempMatches.Remove(tempMatches.SingleOrDefault(m => m.Index == match.Index));
 
-                        this.Matches.Add(match);
-                        numberOfMatches--;
+
+
+                    remainingBag.Remove(match.Contender1);
+                    remainingBag.Remove(match.Contender2);                        
+
+                    if (week < weeks)
+                    {
+                        matchesToEvaluate.RemoveAll(m => m.Contender1 == match.Contender1);
+                        matchesToEvaluate.RemoveAll(m => m.Contender2 == match.Contender1);
+                        matchesToEvaluate.RemoveAll(m => m.Contender1 == match.Contender2);
+                        matchesToEvaluate.RemoveAll(m => m.Contender2 == match.Contender2);
                     }
                     else
-                        tempMatches.Add(match);
+                    {
+                        Console.WriteLine();
+                    }
 
-
-                } while (!(this.Matches.Count == (this.GamesPerWeek * week)));                
+                }                
             }
 
         }
@@ -186,11 +248,6 @@ namespace makeYourRankLibrary.MatchAlgorithm
         private bool CheckMatch(Match match, List<Match> tempMatches, int week, string byeContender)
         {
             var isValidMatch = false;
-
-            if (byeContender == match.Contender1 || byeContender == match.Contender2)
-            {
-                return false;
-            }
 
             if (this.Matches.Count > 0)
             {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace makeYourRankLibrary.MatchAlgorithm
+namespace MakeYourRankLibrary.MatchAlgorithm
 {
     public class BasicAlgorithm : MatchAlgorithm
     {
@@ -46,7 +46,7 @@ namespace makeYourRankLibrary.MatchAlgorithm
 
             foreach (var player in base.PlayerCalendar)
             {
-                var oponents = makeYourRankLibrary.Utilities.CloneListExtension.Clone(players);
+                var oponents = MakeYourRankLibrary.Utilities.CloneListExtension.Clone(players);
                 oponents.Remove(player.PlayerId);
 
                 //The Core of this algorith, a random number will be generated in order to get the oponent
@@ -59,8 +59,10 @@ namespace makeYourRankLibrary.MatchAlgorithm
                     var match = new Match { Contender1 = player.PlayerId, Contender2 = oponents[choice]};
                     //player.Oponents.Add(match);
                     if (!IsExistingMatch(match))
+                    {
+                        match.Index = base.Matches.Count;
                         base.Matches.Add(match);
-
+                    }
                     //Asking Lexnav how change the order of items with .net framework or custom routine
                     oponents.RemoveAt(choice);
                     oponents.Reverse();

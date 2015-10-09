@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace makeYourRankLibrary.MatchAlgorithm
+namespace MakeYourRankLibrary.MatchAlgorithm
 {
     public class BagPlayers
     {
@@ -20,9 +20,11 @@ namespace makeYourRankLibrary.MatchAlgorithm
 
     public struct Match
     {
+        public int Index { get; set; }
         public int Week { get; set; }
         public string Contender1 { get; set; }
         public string Contender2 { get; set; }
+        public bool IsMatchWithByeWeekContender { get; set; }
     }
 
     public struct ByeWeek
